@@ -1,0 +1,74 @@
+---
+title: "Baserunning Stats"
+output: github_document
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+sbd <- read.csv("sbd.csv")
+library(tidyverse)
+library(ggplot2)
+sbd_clean <- sbd %>%
+  filter(Year != 2020) %>%
+  mutate(
+    CS = as.numeric(gsub("[^0-9.]", "", CS)) / 100,  # divide by 100 to fix scale
+    SB_pct = SB / (SB + CS) * 100,
+    SB_attempts = SB + CS,
+    rule_change = ifelse(Year >= 2023, "Post", "Pre")
+  )
+head(sbd_clean)
+glimpse(sbd_clean)
+```
+
+
+```{r}
+yearly <- sbd_clean %>%
+  filter(Tm == "League Average") %>%
+   select(Year, SB, CS, SB_attempts, SB_pct, rule_change)
+```
+
+
+```{r}
+ggplot(yearly, aes(x = Year, y = SB_attempts)) +
+  geom_line(color = "steelblue", linewidth = 1.2) +
+  geom_point(color = "steelblue", size = 3) +
+  geom_vline(xintercept = 2023, linetype = "dashed", color = "red") +
+  annotate("text", x = 2023.1, y = max(yearly$SB_attempts), 
+           label = "Rule Changes", color = "red", hjust = 0) +
+  scale_x_continuous(breaks = seq(2015, 2025, by = 1)) +
+  labs(title = "MLB Stolen Base Attempts by Year",
+       x = "Year", y = "Total Attempts (League Average)") +
+  theme_minimal()
+```
+
+```{r}
+ggplot(yearly, aes(x = Year, y = SB_pct)) +
+  geom_line(color = "darkgreen", linewidth = 1.2) +
+  geom_point(color = "darkgreen", size = 3) +
+  geom_vline(xintercept = 2023, linetype = "dashed", color = "red") +
+  annotate("text", x = 2023.1, y = max(yearly$SB_pct), 
+           label = "Rule Changes", color = "red", hjust = 0) +
+  scale_x_continuous(breaks = seq(2015, 2025, by = 1)) +
+  labs(title = "MLB Stolen Base Success Rate by Year",
+       x = "Year", y = "Success Rate (%)") +
+  theme_minimal()
+```
+```{r}
+model_attempts <- lm(SB_attempts ~ Year + rule_change, data = yearly)
+model_rates <- lm(SB_pct ~ Year + rule_change, data = yearly)
+summary(model_attempts)
+summary(model_rates)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+```{r}
+write.csv(sbd, "sbd.csv", row.names = FALSE)
+```
+
